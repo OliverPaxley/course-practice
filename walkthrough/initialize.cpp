@@ -7,7 +7,7 @@ class Item {
     string name{ "empty" };    // default initializer
 public:
     Item() = default ;                        // uses defaults
-    Item(const string& n) : name(n) {};     // member list
+    Item(const string& n) : name(n) {};      // member list
     Item(const string& n, int i) : id(i), name(n) {};
     void display() const {
         cout << name << " : " << id << endl; 
