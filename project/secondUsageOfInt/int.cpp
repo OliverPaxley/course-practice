@@ -1,36 +1,35 @@
 #include "int.h"
 using namespace std;
 
-Int::Int(int value) : m_value(value){};
-
-auto Int::valid()->bool {
-    bool res =true;
-    if (m_value < 0 || m_value > 100) {
-        m_message = "Invalid marks try again: ";
-        res = false;
-    }
-    return res;
+Int::Int(int value, auto (*validateLogicAddress)(int val, string &messageOut)->bool) {
+    m_value = value;
+    m_valid = validateLogicAddress;
 }
 
-auto Int::get(std::istream& istr)->std::istream& {
+void Int::set(auto (*validationLogicAddress)(int val, std::string &messageOut)->bool) {
+    m_valid = validationLogicAddress;
+}
+
+auto Int::get(istream& istr)->istream& {
     bool done = false;
     do {
-        if (istr >> m_value) done = valid();
-        else {
-            m_message = "Invalid integer, try again";
+        if (istr >> m_value) {
+            done = !m_valid || m_valid(m_value, m_message);
+        } else {
+            m_message = "invalid integer, enter again: ";
             istr.clear();
         }
-        istr.ignore(10000, '\n');
+        istr.ignore(1000, '\n');
     } while (!done && cout << m_message);
-    m_message = "";
+
     return istr;
 }
 auto Int::put(ostream& ostr) const->ostream& {
-   return ostr << m_value;
+    return ostr << m_value ;
 }
-auto operator<<(std::ostream& ostr, Int& I)->std::ostream& {
+auto operator<<(ostream& ostr, const Int& I)->ostream& {
     return I.put(ostr);
 }
-auto operator>>(std::istream& istr, Int& I)->std::istream& {
+auto operator>>(istream& istr, Int& I)->istream& {
     return I.get(istr);
 }
