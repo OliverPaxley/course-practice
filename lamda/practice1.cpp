@@ -13,7 +13,7 @@ bool isEven(int x) {
     return x % 2 == 0;
 }
 
-size_t countIf(const int* arr, size_t n, bool (*cond)(int)){
+size_t countIf(const int* arr, size_t n, Condition cond){
     size_t cnt{}; 
     for (size_t i = 0; i < n; i++){
         if(cond(arr[i])) cnt++;
