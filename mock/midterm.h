@@ -2,6 +2,7 @@
 #define MIDTERM_H
 #include <iostream>
 #include <cstring>
+#include <string>
 using namespace std;
 
 namespace seneca {
@@ -13,26 +14,45 @@ namespace seneca {
         Message() = default;
         Message(const char* text) {
             if (text) {
-                m_text = new char[strlen(text) + 1];
-                strcpy(m_text, text);
+                m_len = std::strlen(text);
+                m_text = new char[m_len + 1];
+                std::memcpy(m_text, text, m_len + 1);
             }
         };
-        Message(const Message& src) =default;
-        Message& operator=(const Message& src)= default;
-        Message(Message&& src)noexcept : m_text{src.m_text}, m_len(src.m_len) {
-            delete[] src.m_text;
+        Message(const Message& src) : m_len{src.m_len} {
+            if (src.m_text) {
+                m_text = new char[m_len + 1];
+                std::memcpy(m_text, src.m_text, m_len + 1);
+            }
+        }
+        Message& operator=(const Message& src) {
+            if (this != &src) {
+                Message copy(src);
+                swap(copy);
+            }
+            return *this;
+        }
+        Message(Message&& src) noexcept : m_text{src.m_text}, m_len{src.m_len} {
+            src.m_text = nullptr;
             src.m_len = 0;
         }
         Message& operator=(Message&& src)noexcept {
             if (this != &src) {
                 delete[] m_text;
-                m_text = nullptr;
                 m_text = src.m_text;
                 m_len = src.m_len;
-                delete[] src.m_text;
+                src.m_text = nullptr;
                 src.m_len = 0;
             }
             return *this;
+        }
+        void swap(Message& other) noexcept {
+            char* text = m_text;
+            m_text = other.m_text;
+            other.m_text = text;
+            size_t len = m_len;
+            m_len = other.m_len;
+            other.m_len = len;
         }
         ~Message() {
             delete[] m_text;
@@ -43,45 +63,44 @@ namespace seneca {
     protected:
         std::string m_plate;
     public:
-        Vehicle(const std::string& plate) : m_plate{plate}{};
-        virtual double toll() const;
-        virtual std::ostream& display(std::ostream&) const;
+        Vehicle(const std::string& plate) : m_plate{plate} {}
+        virtual double toll() const { return 0.0; }
+        virtual std::ostream& display(std::ostream& os) const { return os << "Vehicle " << m_plate; }
         virtual ~Vehicle() = default ;
     };
     class Car : public Vehicle {
-        size_t m_passenger{};
+        int m_passenger{};
     public:
-        Car(const std::string& plate ,size_t passenger) : Vehicle(plate), m_passenger(passenger){};
+        Car(const std::string& plate, int passenger) : Vehicle(plate), m_passenger(passenger) {}
         double toll() const override {
-            return 2.5 + 0.5*static_cast<double>(m_passenger);
+            const int extraPassengers = m_passenger > 2 ? m_passenger - 2 : 0;
+            return 2.50 + 0.50 * static_cast<double>(extraPassengers);
         }
-        std::ostream& display(std::ostream&) const override {
-            cout << "Car : " << m_plate << " Passenger: " << m_passenger << endl ;
-            return cout;
+        std::ostream& display(std::ostream& os) const override {
+            return os << "Car " << m_plate << ": " << m_passenger << " passengers";
         }
     };
     class Truck : public Vehicle {
         size_t m_axles{};
     public:
-        Truck(std::string& plate, size_t axles) : Vehicle(plate), m_axles(axles){};
+        Truck(const std::string& plate, size_t axles) : Vehicle(plate), m_axles(axles) {}
         double toll() const override {
             return 4.00 * static_cast<double>(m_axles);
         }
-        std::ostream& display(std::ostream&) const override {
-            cout << "Truck: " << m_plate << " " << m_axles << " axles " << endl;
-            return cout;
+        std::ostream& display(std::ostream& os) const override {
+            return os << "Truck: " << m_plate << " " << m_axles << " axles";
         }
     };
-    double totalToll(const seneca::Vehicle* const vehicles[], size_t count) {
+    inline double totalToll(const seneca::Vehicle* const vehicles[], size_t count) {
         double total{};
         for (size_t i = 0; i < count; i++) {
-            total += vehicles[i]->toll();
+            if (vehicles[i]) total += vehicles[i]->toll();
         }
         return total;
     }
-    void printAll(const seneca::Vehicle* const vehicles[], size_t count, std::ostream& os){ 
+    inline void printAll(const seneca::Vehicle* const vehicles[], size_t count, std::ostream& os){ 
         for (size_t i = 0; i< count; i++) {
-            vehicles[i]->display(os);
+            if (vehicles[i]) vehicles[i]->display(os) << '\n';
         }
     }
     // Question 3: Class templates and relationships (18 marks)
@@ -132,7 +151,11 @@ namespace seneca {
     class Cars : public Engine {
         Engine* m_engine{};
     public:
-        Cars(const Engine& E) : Engine(E), m_engine(new Engine(E)) {};
+        Cars(const Engine& E) : Engine(E), m_engine(new Engine(E)) {}
+        Cars(const Cars& src)
+            : Engine(src), m_engine(src.m_engine ? new Engine(*src.m_engine) : nullptr) {}
+        Cars& operator=(const Cars&) = delete;
+        ~Cars() { delete m_engine; }
     };
     class Garage : public Cars {
         Car* m_cars[5]{};
@@ -147,13 +170,12 @@ namespace seneca {
             }
             return *this;
         }
-        ~Garage() {
-            // Cars are owned elsewhere, so do not delete them here.
-        }
+        ~Garage() = default; // The Car objects are owned elsewhere.
     };
     // Question 4: Function pointers and lambdas (16 marks)
     using Condition = bool(*)(int);
-    int countIf(const int arr[], size_t size, Condition cond) {
+    inline int countIf(const int arr[], size_t size, Condition cond) {
+        if (!arr || !cond) return 0;
         int count{};
         for (size_t i = 0; i < size; ++i) {
             if (cond(arr[i])) {
@@ -162,7 +184,8 @@ namespace seneca {
         }
         return count;
     }
-    int filter(const int input[], size_t size, int output[], Condition cond) {
+    inline int filter(const int input[], size_t size, int output[], Condition cond) {
+        if (!input || !output || !cond) return 0;
         int copied{};
         for (size_t i = 0; i < size; ++i) {
             if (cond(input[i])) {
@@ -171,7 +194,7 @@ namespace seneca {
         }
         return copied;
     }
-    bool isPrime(int value) {
+    inline bool isPrime(int value) {
         if (value < 2) {
             return false;
         }
