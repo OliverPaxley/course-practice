@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:advoop.sdds.ca)",
+      "Bash(chmod +x /Users/macbookair/Desktop/course-practice/midterm/practice/build_and_run.sh)",
+      "Bash(./build_and_run.sh Type/FundamentalTypes)",
+      "Bash(./build_and_run.sh Type/PointerReference)",
+      "Bash(./build_and_run.sh Debugging)"
+    ]
+  }
+}
